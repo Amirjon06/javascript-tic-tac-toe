@@ -1,388 +1,142 @@
 <!DOCTYPE html>
 <html lang="en" data-theme="dark">
-  <head>
-    <meta charset="UTF-8" />
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tic Tac Toe</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
 
-    <meta
-      name="viewport"
-      content="width=device-width, initial-scale=1.0"
-    />
+  <canvas id="bg-canvas"></canvas>
 
-    <meta
-      name="description"
-      content="Modern Tic Tac Toe game built with HTML, CSS, and JavaScript featuring AI modes, themes, animations, and responsive design."
-    />
+  <div class="app" id="app">
 
-    <title>Tic Tac Toe | Modern JavaScript Game</title>
+    <div class="mode-screen" id="mode-screen">
+      <header class="header">
+        <h1 class="header__title">Tic Tac Toe</h1>
+        <div class="theme-switcher" role="group" aria-label="Select theme">
+          <button class="theme-btn" data-theme="dark"  title="Dark"></button>
+          <button class="theme-btn" data-theme="neon"  title="Neon"></button>
+          <button class="theme-btn" data-theme="light" title="Light"></button>
+        </div>
+      </header>
 
-    <link rel="stylesheet" href="style.css" />
-  </head>
-
-  <body>
-
-    <!-- =====================================================
-         APP WRAPPER
-         Single centered application container
-         ===================================================== -->
-    <div class="app">
-
-      <!-- =====================================================
-           MODE SELECTION SCREEN
-           ===================================================== -->
-      <section
-        class="mode-screen"
-        id="mode-screen"
-        aria-label="Select game mode"
-      >
-
-        <!-- Header -->
-        <header class="header">
-
-          <h1 class="header__title">
-            Tic Tac Toe
-          </h1>
-
-          <p class="header__subtitle">
-            Choose a mode to start
-          </p>
-
-          <!-- Theme Switcher -->
-          <div
-            class="theme-switcher"
-            role="group"
-            aria-label="Select theme"
-          >
-            <button
-              class="theme-btn"
-              data-theme="dark"
-              aria-label="Dark theme"
-              title="Dark"
-            ></button>
-
-            <button
-              class="theme-btn"
-              data-theme="neon"
-              aria-label="Neon theme"
-              title="Neon"
-            ></button>
-
-            <button
-              class="theme-btn"
-              data-theme="light"
-              aria-label="Light theme"
-              title="Light"
-            ></button>
+      <div class="mode-steps">
+        <div class="step" id="step-modes">
+          <div class="mode-cards">
+            <button class="mode-card" id="mode-friend">
+              <span class="mode-card__icon">👥</span>
+              <span class="mode-card__label">vs Friend</span>
+              <span class="mode-card__desc">Two players, one screen</span>
+            </button>
+            <button class="mode-card" id="mode-ai">
+              <span class="mode-card__icon">🤖</span>
+              <span class="mode-card__label">vs AI</span>
+              <span class="mode-card__desc">Challenge the computer</span>
+            </button>
           </div>
-
-        </header>
-
-        <!-- Game Mode Cards -->
-        <div class="mode-cards">
-
-          <button
-            class="mode-card"
-            id="mode-friend"
-            aria-label="Play against a friend"
-          >
-            <span
-              class="mode-card__icon"
-              aria-hidden="true"
-            >
-              👥
-            </span>
-
-            <span class="mode-card__label">
-              vs Friend
-            </span>
-
-            <span class="mode-card__desc">
-              Two players, one screen
-            </span>
-          </button>
-
-          <button
-            class="mode-card"
-            id="mode-ai"
-            aria-label="Play against the AI"
-          >
-            <span
-              class="mode-card__icon"
-              aria-hidden="true"
-            >
-              🤖
-            </span>
-
-            <span class="mode-card__label">
-              vs AI
-            </span>
-
-            <span class="mode-card__desc">
-              Challenge the computer
-            </span>
-          </button>
-
         </div>
 
-        <!-- AI Difficulty Selection -->
-        <div
-          class="difficulty-selector is-hidden"
-          id="difficulty-selector"
-        >
-
-          <button
-            class="difficulty-btn"
-            data-difficulty="easy"
-          >
-            Easy Mode
-          </button>
-
-          <button
-            class="difficulty-btn"
-            data-difficulty="medium"
-          >
-            Medium Mode
-          </button>
-
-          <button
-            class="difficulty-btn"
-            data-difficulty="hard"
-          >
-            Impossible Mode
-          </button>
-
+        <div class="step is-hidden" id="step-difficulty">
+          <div class="diff-top">
+            <button class="back-btn" id="back-btn" aria-label="Go back">
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+                <path d="M9 2.5L4.5 7L9 11.5" stroke="currentColor" stroke-width="1.5"
+                  stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              Back
+            </button>
+            <span class="step-label">Choose difficulty</span>
+          </div>
+          <div class="diff-cards">
+            <button class="diff-card" data-diff="easy">
+              <div class="diff-dots">
+                <span class="dot dot--on"></span><span class="dot"></span><span class="dot"></span>
+              </div>
+              <div class="diff-info">
+                <span class="diff-name">Easy</span>
+                <span class="diff-desc">Random moves</span>
+              </div>
+            </button>
+            <button class="diff-card" data-diff="medium">
+              <div class="diff-dots">
+                <span class="dot dot--on"></span><span class="dot dot--on"></span><span class="dot"></span>
+              </div>
+              <div class="diff-info">
+                <span class="diff-name">Medium</span>
+                <span class="diff-desc">Blocks and attacks</span>
+              </div>
+            </button>
+            <button class="diff-card" data-diff="impossible">
+              <div class="diff-dots">
+                <span class="dot dot--on"></span><span class="dot dot--on"></span><span class="dot dot--on"></span>
+              </div>
+              <div class="diff-info">
+                <span class="diff-name">Impossible</span>
+                <span class="diff-desc">Unbeatable AI</span>
+              </div>
+            </button>
+          </div>
         </div>
-
-      </section>
-
-      <!-- =====================================================
-           GAME SCREEN
-           ===================================================== -->
-      <section
-        class="container is-hidden"
-        id="game-screen"
-        aria-hidden="true"
-      >
-
-        <!-- Header -->
-        <header class="header">
-
-          <h1 class="header__title">
-            Tic Tac Toe
-          </h1>
-
-          <p
-            class="header__subtitle"
-            id="mode-label"
-          >
-            Two Player
-          </p>
-
-          <!-- Theme Switcher -->
-          <div
-            class="theme-switcher"
-            role="group"
-            aria-label="Select theme"
-          >
-
-            <button
-              class="theme-btn"
-              data-theme="dark"
-              aria-label="Dark theme"
-              title="Dark"
-            ></button>
-
-            <button
-              class="theme-btn"
-              data-theme="neon"
-              aria-label="Neon theme"
-              title="Neon"
-            ></button>
-
-            <button
-              class="theme-btn"
-              data-theme="light"
-              aria-label="Light theme"
-              title="Light"
-            ></button>
-
-          </div>
-
-        </header>
-
-        <!-- =================================================
-             SCOREBOARD
-             ================================================= -->
-        <section
-          class="scoreboard"
-          aria-label="Game scoreboard"
-        >
-
-          <div class="scoreboard__player scoreboard__player--x">
-
-            <span
-              class="scoreboard__label"
-              id="label-x"
-            >
-              Player X
-            </span>
-
-            <span
-              class="scoreboard__score"
-              id="score-x"
-            >
-              0
-            </span>
-
-          </div>
-
-          <div
-            class="scoreboard__divider"
-            aria-hidden="true"
-          >
-            —
-          </div>
-
-          <div class="scoreboard__player scoreboard__player--o">
-
-            <span
-              class="scoreboard__label"
-              id="label-o"
-            >
-              Player O
-            </span>
-
-            <span
-              class="scoreboard__score"
-              id="score-o"
-            >
-              0
-            </span>
-
-          </div>
-
-        </section>
-
-        <!-- =================================================
-             STATUS MESSAGE
-             ================================================= -->
-        <p
-          class="status-message"
-          id="status-message"
-          aria-live="polite"
-        >
-          Player X's turn
-        </p>
-
-        <!-- =================================================
-             GAME BOARD
-             ================================================= -->
-        <main
-          class="board"
-          id="board"
-          role="grid"
-          aria-label="Tic Tac Toe board"
-        >
-
-          <button
-            class="cell"
-            data-index="0"
-            aria-label="Cell 1"
-            role="gridcell"
-          ></button>
-
-          <button
-            class="cell"
-            data-index="1"
-            aria-label="Cell 2"
-            role="gridcell"
-          ></button>
-
-          <button
-            class="cell"
-            data-index="2"
-            aria-label="Cell 3"
-            role="gridcell"
-          ></button>
-
-          <button
-            class="cell"
-            data-index="3"
-            aria-label="Cell 4"
-            role="gridcell"
-          ></button>
-
-          <button
-            class="cell"
-            data-index="4"
-            aria-label="Cell 5"
-            role="gridcell"
-          ></button>
-
-          <button
-            class="cell"
-            data-index="5"
-            aria-label="Cell 6"
-            role="gridcell"
-          ></button>
-
-          <button
-            class="cell"
-            data-index="6"
-            aria-label="Cell 7"
-            role="gridcell"
-          ></button>
-
-          <button
-            class="cell"
-            data-index="7"
-            aria-label="Cell 8"
-            role="gridcell"
-          ></button>
-
-          <button
-            class="cell"
-            data-index="8"
-            aria-label="Cell 9"
-            role="gridcell"
-          ></button>
-
-        </main>
-
-        <!-- =================================================
-             ACTION BUTTONS
-             ================================================= -->
-        <div class="actions">
-
-          <button
-            class="btn btn--primary"
-            id="restart-btn"
-          >
-            Restart Game
-          </button>
-
-          <button
-            class="btn btn--ghost"
-            id="reset-scores-btn"
-          >
-            Reset Scores
-          </button>
-
-          <button
-            class="btn btn--ghost btn--icon"
-            id="change-mode-btn"
-            aria-label="Return to mode selection"
-            title="Change mode"
-          >
-            ↩
-          </button>
-
-        </div>
-
-      </section>
-
+      </div>
     </div>
 
-    <script src="script.js"></script>
+    <div class="container is-hidden" id="game-screen">
+      <header class="header">
+        <h1 class="header__title">Tic Tac Toe</h1>
+        <div class="theme-switcher" role="group" aria-label="Select theme">
+          <button class="theme-btn" data-theme="dark"  title="Dark"></button>
+          <button class="theme-btn" data-theme="neon"  title="Neon"></button>
+          <button class="theme-btn" data-theme="light" title="Light"></button>
+        </div>
+        <div class="game-badge" id="game-badge">vs Friend</div>
+      </header>
 
-  </body>
+      <div class="scoreboard">
+        <div class="scoreboard__player scoreboard__player--x">
+          <span class="scoreboard__label" id="label-x">Player X</span>
+          <span class="scoreboard__score" id="score-x">0</span>
+        </div>
+        <div class="scoreboard__divider">—</div>
+        <div class="scoreboard__player scoreboard__player--o">
+          <span class="scoreboard__label" id="label-o">Player O</span>
+          <span class="scoreboard__score" id="score-o">0</span>
+        </div>
+      </div>
+
+      <p class="status-message" id="status-message" aria-live="polite">Player X's turn</p>
+
+      <main class="board" id="board" role="grid" aria-label="Tic Tac Toe board">
+        <button class="cell" data-index="0" aria-label="Cell 1" role="gridcell"></button>
+        <button class="cell" data-index="1" aria-label="Cell 2" role="gridcell"></button>
+        <button class="cell" data-index="2" aria-label="Cell 3" role="gridcell"></button>
+        <button class="cell" data-index="3" aria-label="Cell 4" role="gridcell"></button>
+        <button class="cell" data-index="4" aria-label="Cell 5" role="gridcell"></button>
+        <button class="cell" data-index="5" aria-label="Cell 6" role="gridcell"></button>
+        <button class="cell" data-index="6" aria-label="Cell 7" role="gridcell"></button>
+        <button class="cell" data-index="7" aria-label="Cell 8" role="gridcell"></button>
+        <button class="cell" data-index="8" aria-label="Cell 9" role="gridcell"></button>
+      </main>
+
+      <div class="actions">
+        <button class="btn btn--primary" id="restart-btn">Restart</button>
+        <button class="btn btn--ghost" id="reset-scores-btn">Reset Scores</button>
+        <button class="btn btn--icon" id="change-mode-btn" title="Change mode">↩</button>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="modal-overlay is-hidden" id="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <div class="modal-card" id="modal-card">
+      <div class="modal-icon" id="modal-icon"></div>
+      <h2 class="modal-title" id="modal-title"></h2>
+      <p class="modal-sub" id="modal-sub"></p>
+      <div class="modal-actions" id="modal-actions"></div>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
 </html>
