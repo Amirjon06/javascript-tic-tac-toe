@@ -1,29 +1,47 @@
 # Modern Tic Tac Toe
 
-A modern Tic Tac Toe game built with HTML, CSS, and JavaScript featuring responsive UI design, animated gameplay, AI opponent logic, and multiple visual themes.
+A modern Tic Tac Toe game built with HTML, CSS, and vanilla JavaScript featuring animated gameplay, AI difficulty modes, responsive UI design, and dynamic visual themes.
 
 ---
 
 ## Features
 
-- Player vs Player mode
-- Player vs AI mode
-- Minimax AI algorithm
+### Game Modes
+- Player vs Player
+- Player vs AI
+
+### Difficulty Levels
+- Easy
+- Medium
+- Impossible (Minimax AI)
+
+### UI & Animations
 - Animated SVG X and O rendering
-- Dark, Light, and Neon themes
-- Responsive design
-- Score tracking system
+- Smooth transitions and hover effects
+- Responsive layout for desktop and mobile
+- End-game modal system
 - Confetti win animation
-- Smooth transitions and interactions
-- Accessibility support
+
+### Themes
+- Dark
+- Neon
+- Light
+
+Theme preferences are saved using `localStorage`.
+
+### Visual Effects
+- Animated gradient background
+- Floating particles
+- Ambient glow effects
+- Glassmorphism UI styling
 
 ---
 
-## Tech Stack
+## Technologies Used
 
 - HTML5
 - CSS3
-- JavaScript (Vanilla JS)
+- Vanilla JavaScript
 
 ---
 
@@ -32,8 +50,12 @@ A modern Tic Tac Toe game built with HTML, CSS, and JavaScript featuring respons
 ```bash
 javascript-tic-tac-toe/
 │
-├── index.html      # Main game structure
-├── style.css       # UI styling, themes, animations
-├── script.js       # Game logic and AI system
-├── package.json    # Project metadata
-└── README.md       # Documentation
+├── index.html
+├── style.css
+├── script.js
+├── package.json
+├── README.md
+└── screenshots/
+    ├── menu.png
+    ├── difficulty-selection.png
+    └── gameplay.png
