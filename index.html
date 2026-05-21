@@ -1,16 +1,388 @@
 <!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>Tic Tac Toe</title>
-  <link rel="stylesheet" href="style.css">
-</head>
-<body>
+<html lang="en" data-theme="dark">
+  <head>
+    <meta charset="UTF-8" />
 
-  <h1>Tic Tac Toe</h1>
-  <div class="board" id="board"></div>
-  <h2 id="status"></h2>
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0"
+    />
 
-  <script src="script.js"></script>
-</body>
+    <meta
+      name="description"
+      content="Modern Tic Tac Toe game built with HTML, CSS, and JavaScript featuring AI modes, themes, animations, and responsive design."
+    />
+
+    <title>Tic Tac Toe | Modern JavaScript Game</title>
+
+    <link rel="stylesheet" href="style.css" />
+  </head>
+
+  <body>
+
+    <!-- =====================================================
+         APP WRAPPER
+         Single centered application container
+         ===================================================== -->
+    <div class="app">
+
+      <!-- =====================================================
+           MODE SELECTION SCREEN
+           ===================================================== -->
+      <section
+        class="mode-screen"
+        id="mode-screen"
+        aria-label="Select game mode"
+      >
+
+        <!-- Header -->
+        <header class="header">
+
+          <h1 class="header__title">
+            Tic Tac Toe
+          </h1>
+
+          <p class="header__subtitle">
+            Choose a mode to start
+          </p>
+
+          <!-- Theme Switcher -->
+          <div
+            class="theme-switcher"
+            role="group"
+            aria-label="Select theme"
+          >
+            <button
+              class="theme-btn"
+              data-theme="dark"
+              aria-label="Dark theme"
+              title="Dark"
+            ></button>
+
+            <button
+              class="theme-btn"
+              data-theme="neon"
+              aria-label="Neon theme"
+              title="Neon"
+            ></button>
+
+            <button
+              class="theme-btn"
+              data-theme="light"
+              aria-label="Light theme"
+              title="Light"
+            ></button>
+          </div>
+
+        </header>
+
+        <!-- Game Mode Cards -->
+        <div class="mode-cards">
+
+          <button
+            class="mode-card"
+            id="mode-friend"
+            aria-label="Play against a friend"
+          >
+            <span
+              class="mode-card__icon"
+              aria-hidden="true"
+            >
+              👥
+            </span>
+
+            <span class="mode-card__label">
+              vs Friend
+            </span>
+
+            <span class="mode-card__desc">
+              Two players, one screen
+            </span>
+          </button>
+
+          <button
+            class="mode-card"
+            id="mode-ai"
+            aria-label="Play against the AI"
+          >
+            <span
+              class="mode-card__icon"
+              aria-hidden="true"
+            >
+              🤖
+            </span>
+
+            <span class="mode-card__label">
+              vs AI
+            </span>
+
+            <span class="mode-card__desc">
+              Challenge the computer
+            </span>
+          </button>
+
+        </div>
+
+        <!-- AI Difficulty Selection -->
+        <div
+          class="difficulty-selector is-hidden"
+          id="difficulty-selector"
+        >
+
+          <button
+            class="difficulty-btn"
+            data-difficulty="easy"
+          >
+            Easy AI
+          </button>
+
+          <button
+            class="difficulty-btn"
+            data-difficulty="medium"
+          >
+            Medium AI
+          </button>
+
+          <button
+            class="difficulty-btn"
+            data-difficulty="hard"
+          >
+            Impossible AI
+          </button>
+
+        </div>
+
+      </section>
+
+      <!-- =====================================================
+           GAME SCREEN
+           ===================================================== -->
+      <section
+        class="container is-hidden"
+        id="game-screen"
+        aria-hidden="true"
+      >
+
+        <!-- Header -->
+        <header class="header">
+
+          <h1 class="header__title">
+            Tic Tac Toe
+          </h1>
+
+          <p
+            class="header__subtitle"
+            id="mode-label"
+          >
+            Two Player
+          </p>
+
+          <!-- Theme Switcher -->
+          <div
+            class="theme-switcher"
+            role="group"
+            aria-label="Select theme"
+          >
+
+            <button
+              class="theme-btn"
+              data-theme="dark"
+              aria-label="Dark theme"
+              title="Dark"
+            ></button>
+
+            <button
+              class="theme-btn"
+              data-theme="neon"
+              aria-label="Neon theme"
+              title="Neon"
+            ></button>
+
+            <button
+              class="theme-btn"
+              data-theme="light"
+              aria-label="Light theme"
+              title="Light"
+            ></button>
+
+          </div>
+
+        </header>
+
+        <!-- =================================================
+             SCOREBOARD
+             ================================================= -->
+        <section
+          class="scoreboard"
+          aria-label="Game scoreboard"
+        >
+
+          <div class="scoreboard__player scoreboard__player--x">
+
+            <span
+              class="scoreboard__label"
+              id="label-x"
+            >
+              Player X
+            </span>
+
+            <span
+              class="scoreboard__score"
+              id="score-x"
+            >
+              0
+            </span>
+
+          </div>
+
+          <div
+            class="scoreboard__divider"
+            aria-hidden="true"
+          >
+            —
+          </div>
+
+          <div class="scoreboard__player scoreboard__player--o">
+
+            <span
+              class="scoreboard__label"
+              id="label-o"
+            >
+              Player O
+            </span>
+
+            <span
+              class="scoreboard__score"
+              id="score-o"
+            >
+              0
+            </span>
+
+          </div>
+
+        </section>
+
+        <!-- =================================================
+             STATUS MESSAGE
+             ================================================= -->
+        <p
+          class="status-message"
+          id="status-message"
+          aria-live="polite"
+        >
+          Player X's turn
+        </p>
+
+        <!-- =================================================
+             GAME BOARD
+             ================================================= -->
+        <main
+          class="board"
+          id="board"
+          role="grid"
+          aria-label="Tic Tac Toe board"
+        >
+
+          <button
+            class="cell"
+            data-index="0"
+            aria-label="Cell 1"
+            role="gridcell"
+          ></button>
+
+          <button
+            class="cell"
+            data-index="1"
+            aria-label="Cell 2"
+            role="gridcell"
+          ></button>
+
+          <button
+            class="cell"
+            data-index="2"
+            aria-label="Cell 3"
+            role="gridcell"
+          ></button>
+
+          <button
+            class="cell"
+            data-index="3"
+            aria-label="Cell 4"
+            role="gridcell"
+          ></button>
+
+          <button
+            class="cell"
+            data-index="4"
+            aria-label="Cell 5"
+            role="gridcell"
+          ></button>
+
+          <button
+            class="cell"
+            data-index="5"
+            aria-label="Cell 6"
+            role="gridcell"
+          ></button>
+
+          <button
+            class="cell"
+            data-index="6"
+            aria-label="Cell 7"
+            role="gridcell"
+          ></button>
+
+          <button
+            class="cell"
+            data-index="7"
+            aria-label="Cell 8"
+            role="gridcell"
+          ></button>
+
+          <button
+            class="cell"
+            data-index="8"
+            aria-label="Cell 9"
+            role="gridcell"
+          ></button>
+
+        </main>
+
+        <!-- =================================================
+             ACTION BUTTONS
+             ================================================= -->
+        <div class="actions">
+
+          <button
+            class="btn btn--primary"
+            id="restart-btn"
+          >
+            Restart Game
+          </button>
+
+          <button
+            class="btn btn--ghost"
+            id="reset-scores-btn"
+          >
+            Reset Scores
+          </button>
+
+          <button
+            class="btn btn--ghost btn--icon"
+            id="change-mode-btn"
+            aria-label="Return to mode selection"
+            title="Change mode"
+          >
+            ↩
+          </button>
+
+        </div>
+
+      </section>
+
+    </div>
+
+    <script src="script.js"></script>
+
+  </body>
 </html>
