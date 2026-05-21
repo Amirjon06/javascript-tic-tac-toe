@@ -1,311 +1,252 @@
 'use strict';
 
-// ─── Constants ─────────────────────────────────────────
-
 const PLAYERS = Object.freeze({ X: 'X', O: 'O' });
-const MODES = Object.freeze({ FRIEND: 'friend', AI: 'ai' });
-
-const AI_PLAYER = PLAYERS.O;
+const MODES   = Object.freeze({ FRIEND: 'friend', AI: 'ai' });
+const THEMES  = ['dark', 'neon', 'light'];
+const AI_PLAYER   = PLAYERS.O;
 const HUMAN_PLAYER = PLAYERS.X;
+const AI_DELAY    = 480;
+const THEME_KEY   = 'ttt-theme';
 
-const AI_THINK_DELAY_MS = 420;
-const CONFETTI_DELAY_MS = 280;
-const THEME_STORAGE_KEY = 'ttt-theme';
+const WINS = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
 
-const WIN_COMBINATIONS = Object.freeze([
-  [0, 1, 2],
-  [3, 4, 5],
-  [6, 7, 8],
-
-  [0, 3, 6],
-  [1, 4, 7],
-  [2, 5, 8],
-
-  [0, 4, 8],
-  [2, 4, 6],
-]);
-
-// ─── State ─────────────────────────────────────────────
+const MSG = {
+  win:  { titles: ['You won.','Nice.','AI defeated.','Clean win.'], subs: ['Sharp finish.','The AI never saw it coming.','You\'re getting good at this.','Dominant.'], icon: '🏆' },
+  lose: { titles: ['Defeated.','Oops.','Not this time.','Rough one.'], subs: ['The AI cooked you.','Better luck next round.','It read every move.','You\'ll get it.'], icon: '😤' },
+  draw: { titles: ['Draw.','Even match.','Stalemate.'], subs: ['Nobody wins this round.','Perfectly balanced.','Too close to call.'], icon: '🤝' },
+};
 
 let state = {
-  mode: null,
+  mode: null, difficulty: null,
   board: Array(9).fill(null),
   currentPlayer: PLAYERS.X,
   scores: { X: 0, O: 0 },
-  winner: null,
-  winningCells: [],
-  isDraw: false,
-  isGameOver: false,
-  isAiThinking: false,
-  justWon: false,
+  winner: null, winningCells: [],
+  isDraw: false, isGameOver: false, isAiThinking: false,
 };
-
-// ─── DOM References ───────────────────────────────────
 
 const dom = {
-  modeScreen: document.getElementById('mode-screen'),
-  gameScreen: document.getElementById('game-screen'),
-
-  modeFriendBtn: document.getElementById('mode-friend'),
-  modeAiBtn: document.getElementById('mode-ai'),
-
-  modeLabel: document.getElementById('mode-label'),
-
-  board: document.getElementById('board'),
-  cells: document.querySelectorAll('.cell'),
-
-  statusMsg: document.getElementById('status-message'),
-
-  scoreX: document.getElementById('score-x'),
-  scoreO: document.getElementById('score-o'),
-
-  labelX: document.getElementById('label-x'),
-  labelO: document.getElementById('label-o'),
-
-  restartBtn: document.getElementById('restart-btn'),
-  resetScoreBtn: document.getElementById('reset-scores-btn'),
-  changeModeBtn: document.getElementById('change-mode-btn'),
+  html:         document.documentElement,
+  bgCanvas:     document.getElementById('bg-canvas'),
+  modeScreen:   document.getElementById('mode-screen'),
+  gameScreen:   document.getElementById('game-screen'),
+  stepModes:    document.getElementById('step-modes'),
+  stepDiff:     document.getElementById('step-difficulty'),
+  modeFriendBtn:document.getElementById('mode-friend'),
+  modeAiBtn:    document.getElementById('mode-ai'),
+  backBtn:      document.getElementById('back-btn'),
+  gameBadge:    document.getElementById('game-badge'),
+  board:        document.getElementById('board'),
+  cells:        document.querySelectorAll('.cell'),
+  statusMsg:    document.getElementById('status-message'),
+  scoreX:       document.getElementById('score-x'),
+  scoreO:       document.getElementById('score-o'),
+  labelX:       document.getElementById('label-x'),
+  labelO:       document.getElementById('label-o'),
+  restartBtn:   document.getElementById('restart-btn'),
+  resetScoreBtn:document.getElementById('reset-scores-btn'),
+  changeModeBtn:document.getElementById('change-mode-btn'),
+  themeBtns:    document.querySelectorAll('.theme-btn'),
+  modal:        document.getElementById('modal'),
+  modalCard:    document.getElementById('modal-card'),
+  modalIcon:    document.getElementById('modal-icon'),
+  modalTitle:   document.getElementById('modal-title'),
+  modalSub:     document.getElementById('modal-sub'),
+  modalActions: document.getElementById('modal-actions'),
 };
 
-// ─── Screen Navigation ───────────────────────────────────────────────────────
+// ── Particles ────────────────────────────────────────────────────────────────
+
+function initParticles() {
+  const canvas = dom.bgCanvas;
+  const ctx = canvas.getContext('2d');
+  let pts = [];
+
+  function mkPt(rndY = false) {
+    return {
+      x:   Math.random() * canvas.width,
+      y:   rndY ? Math.random() * canvas.height : canvas.height + 8,
+      r:   Math.random() * 1.3 + 0.4,
+      vx:  (Math.random() - 0.5) * 0.22,
+      vy:  -(Math.random() * 0.32 + 0.1),
+      op:  Math.random() * 0.32 + 0.07,
+    };
+  }
+
+  function resize() {
+    canvas.width  = window.innerWidth;
+    canvas.height = window.innerHeight;
+    pts = Array.from({ length: 48 }, () => mkPt(true));
+  }
+  resize();
+  window.addEventListener('resize', resize);
+
+  function getColor() {
+    const t = dom.html.getAttribute('data-theme');
+    if (t === 'light') return '20,15,10';
+    if (t === 'neon')  return '160,255,210';
+    return '255,255,255';
+  }
+
+  (function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const col = getColor();
+    for (const p of pts) {
+      p.x += p.vx; p.y += p.vy;
+      if (p.y < -6) Object.assign(p, mkPt(false));
+      if (p.x < -6) p.x = canvas.width + 6;
+      if (p.x > canvas.width + 6) p.x = -6;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(${col},${p.op})`;
+      ctx.fill();
+    }
+    requestAnimationFrame(draw);
+  })();
+}
+
+// ── Theme ────────────────────────────────────────────────────────────────────
+
+function applyTheme(t) {
+  if (!THEMES.includes(t)) return;
+  dom.html.setAttribute('data-theme', t);
+  dom.themeBtns.forEach(b => b.classList.toggle('theme-btn--active', b.dataset.theme === t));
+  try { localStorage.setItem(THEME_KEY, t); } catch {}
+}
+
+function loadTheme() {
+  let t = 'dark';
+  try { t = localStorage.getItem(THEME_KEY) || 'dark'; } catch {}
+  applyTheme(t);
+}
+
+// ── Screen & step transitions ────────────────────────────────────────────────
+
+function transition(from, to, cb) {
+  if (from && !from.classList.contains('is-hidden')) {
+    from.classList.add('screen-exit');
+    setTimeout(() => {
+      from.classList.add('is-hidden');
+      from.classList.remove('screen-exit');
+      revealScreen(to, cb);
+    }, 260);
+  } else {
+    revealScreen(to, cb);
+  }
+}
+
+function revealScreen(el, cb) {
+  el.classList.remove('is-hidden');
+  el.classList.add('screen-enter');
+  setTimeout(() => { el.classList.remove('screen-enter'); cb?.(); }, 380);
+}
 
 function showModeScreen() {
-  dom.modeScreen.classList.remove('is-hidden');
-  dom.gameScreen.classList.add('is-hidden');
-  dom.gameScreen.setAttribute('aria-hidden', 'true');
+  // Reset steps to initial state
+  dom.stepDiff.classList.add('is-hidden');
+  dom.stepDiff.classList.remove('step-exit','step-enter','step-enter-bk');
+  dom.stepModes.classList.remove('is-hidden','step-exit','step-enter','step-enter-bk');
+  transition(dom.gameScreen, dom.modeScreen);
 }
 
 function showGameScreen() {
-  dom.modeScreen.classList.add('is-hidden');
-  dom.gameScreen.classList.remove('is-hidden');
-  dom.gameScreen.setAttribute('aria-hidden', 'false');
+  transition(dom.modeScreen, dom.gameScreen);
 }
 
+function showStep(incoming, outgoing, enterClass) {
+  outgoing.classList.add('step-exit');
+  setTimeout(() => {
+    outgoing.classList.add('is-hidden');
+    outgoing.classList.remove('step-exit');
+    incoming.classList.remove('is-hidden');
+    incoming.classList.add(enterClass);
+    setTimeout(() => incoming.classList.remove(enterClass), 280);
+  }, 220);
+}
+
+// ── Mode & difficulty selection ──────────────────────────────────────────────
+
 function selectMode(mode) {
-  state.mode   = mode;
-  state.scores = { X: 0, O: 0 };
-
-  if (mode === MODES.AI) {
-    dom.labelX.textContent    = 'You';
-    dom.labelO.textContent    = 'AI';
-    dom.modeLabel.textContent = 'vs AI';
+  if (mode === MODES.FRIEND) {
+    state.mode = MODES.FRIEND;
+    state.difficulty = null;
+    state.scores = { X: 0, O: 0 };
+    dom.labelX.textContent  = 'Player X';
+    dom.labelO.textContent  = 'Player O';
+    dom.gameBadge.textContent = 'vs Friend';
+    restartGame();
+    showGameScreen();
   } else {
-    dom.labelX.textContent    = 'Player X';
-    dom.labelO.textContent    = 'Player O';
-    dom.modeLabel.textContent = 'Two Player';
+    showStep(dom.stepDiff, dom.stepModes, 'step-enter');
   }
+}
 
+function selectDifficulty(diff) {
+  state.mode = MODES.AI;
+  state.difficulty = diff;
+  state.scores = { X: 0, O: 0 };
+  dom.labelX.textContent = 'You';
+  dom.labelO.textContent = 'AI';
+  dom.gameBadge.textContent = `vs AI · ${cap(diff)}`;
   restartGame();
   showGameScreen();
 }
 
-// ─── Theme Management ────────────────────────────────────────────────────────
+function cap(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
 
-/**
- * Apply a theme by setting data-theme on <html> and persisting to localStorage.
- * The CSS variable overrides in style.css do the rest automatically.
- *
- * @param {string} theme - 'dark' | 'light' | 'neon'
- */
-function applyTheme(theme) {
-  document.documentElement.dataset.theme = theme;
-  localStorage.setItem(THEME_STORAGE_KEY, theme);
+// ── AI ───────────────────────────────────────────────────────────────────────
 
-  // Sync the active state on ALL .theme-btn elements (two sets: one per screen)
-  document.querySelectorAll('.theme-btn').forEach((btn) => {
-    const isActive = btn.dataset.theme === theme;
-    btn.classList.toggle('active', isActive);
-    btn.setAttribute('aria-pressed', String(isActive));
-  });
+function getAiMove(board) {
+  if (state.difficulty === 'easy')       return randomMove(board);
+  if (state.difficulty === 'medium')     return mediumMove(board);
+  return bestMove(board);
 }
 
-// ─── SVG Mark Creation ───────────────────────────────────────────────────────
-
-/**
- * These functions create SVG elements that match the CSS animation classes
- * already defined in style.css. The stroke-dashoffset trick works like this:
- *
- *   1. Set stroke-dasharray = full path length   (makes the stroke "exist")
- *   2. Set stroke-dashoffset = same length        (offsets it to invisible)
- *   3. Animate stroke-dashoffset to 0             (reveals it — looks "drawn")
- *
- * The path lengths were calculated from the SVG geometry:
- *   X lines: √((80-20)² + (80-20)²) ≈ 84.85 → 86 with margin
- *   O circle: 2π × 30 ≈ 188.5 → 189
- */
-
-const SVG_NS = 'http://www.w3.org/2000/svg';
-
-/**
- * Create an animated X mark as an SVG element.
- * @returns {SVGElement}
- */
-function createXMark() {
-  const svg = document.createElementNS(SVG_NS, 'svg');
-  svg.setAttribute('viewBox', '0 0 100 100');
-  svg.classList.add('mark', 'mark--x');
-  svg.setAttribute('aria-hidden', 'true');
-
-  // First diagonal: top-left → bottom-right
-  const line1 = document.createElementNS(SVG_NS, 'line');
-  line1.setAttribute('x1', '20'); line1.setAttribute('y1', '20');
-  line1.setAttribute('x2', '80'); line1.setAttribute('y2', '80');
-  line1.classList.add('mark__stroke', 'mark__stroke--1');
-
-  // Second diagonal: top-right → bottom-left (delayed so strokes draw in sequence)
-  const line2 = document.createElementNS(SVG_NS, 'line');
-  line2.setAttribute('x1', '80'); line2.setAttribute('y1', '20');
-  line2.setAttribute('x2', '20'); line2.setAttribute('y2', '80');
-  line2.classList.add('mark__stroke', 'mark__stroke--2');
-
-  svg.appendChild(line1);
-  svg.appendChild(line2);
-  return svg;
+function randomMove(board) {
+  const empty = board.reduce((a, v, i) => (v === null ? [...a, i] : a), []);
+  return empty[Math.floor(Math.random() * empty.length)];
 }
 
-/**
- * Create an animated O mark as an SVG element.
- * The circle is rotated -90° in CSS so drawing starts at 12 o'clock.
- * @returns {SVGElement}
- */
-function createOMark() {
-  const svg = document.createElementNS(SVG_NS, 'svg');
-  svg.setAttribute('viewBox', '0 0 100 100');
-  svg.classList.add('mark', 'mark--o');
-  svg.setAttribute('aria-hidden', 'true');
-
-  const circle = document.createElementNS(SVG_NS, 'circle');
-  circle.setAttribute('cx', '50');
-  circle.setAttribute('cy', '50');
-  circle.setAttribute('r',  '30');
-  circle.classList.add('mark__stroke');
-
-  svg.appendChild(circle);
-  return svg;
-}
-
-// ─── Confetti ────────────────────────────────────────────────────────────────
-
-/**
- * Launch a confetti particle system on a dynamically-created canvas overlay.
- * The canvas is created, animated, then removed from the DOM when done.
- *
- * Design decisions:
- *   - Canvas is created/destroyed per-win rather than reused (simpler lifecycle)
- *   - pointer-events: none (set via CSS class) — never blocks board interaction
- *   - Checks prefers-reduced-motion — skips entirely if user has it on
- *   - Uses requestAnimationFrame for smooth, battery-friendly animation
- *   - Particles fade out in the final 35% of the animation duration
- */
-function launchConfetti() {
-  // Respect the user's accessibility preference
-  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-
-  const canvas = document.createElement('canvas');
-  canvas.className = 'confetti-canvas';
-  canvas.setAttribute('aria-hidden', 'true');
-  document.body.appendChild(canvas);
-
-  const ctx = canvas.getContext('2d');
-  canvas.width  = window.innerWidth;
-  canvas.height = window.innerHeight;
-
-  // Pull colors from both themes so they always look right
-  const COLORS = ['#e8ff47', '#ff6b6b', '#6bc8ff', '#ff2d78', '#00ff88', '#ffffff', '#ffd700'];
-  const COUNT   = 130;
-  const DURATION = 3000; // ms
-
-  const particles = Array.from({ length: COUNT }, () => ({
-    x:      Math.random() * canvas.width,
-    y:      Math.random() * canvas.height * -0.35, // spawn above viewport
-    vx:     (Math.random() - 0.5) * 5,
-    vy:     Math.random() * 3.5 + 1.5,
-    size:   Math.random() * 7 + 4,
-    color:  COLORS[Math.floor(Math.random() * COLORS.length)],
-    angle:  Math.random() * Math.PI * 2,
-    spin:   (Math.random() - 0.5) * 0.14,
-    isRect: Math.random() > 0.4,
-  }));
-
-  let frameId;
-  const startTime = performance.now();
-
-  function tick(now) {
-    const elapsed = now - startTime;
-    const t = elapsed / DURATION; // 0 → 1 over the duration
-
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    let anyVisible = false;
-
-    particles.forEach((p) => {
-      p.x     += p.vx;
-      p.y     += p.vy;
-      p.vy    += 0.09;   // gravity
-      p.angle += p.spin;
-
-      // Fade out in the final 35% of the animation
-      const opacity = t > 0.65 ? Math.max(0, 1 - (t - 0.65) / 0.35) : 1;
-
-      if (p.y < canvas.height + 40) {
-        anyVisible = true;
-        ctx.save();
-        ctx.globalAlpha = opacity;
-        ctx.translate(p.x, p.y);
-        ctx.rotate(p.angle);
-        ctx.fillStyle = p.color;
-
-        if (p.isRect) {
-          // Flat rectangular confetti strip
-          ctx.fillRect(-p.size / 2, -p.size / 3.5, p.size, p.size / 2);
-        } else {
-          // Circular confetti dot (slightly squished for variety)
-          ctx.beginPath();
-          ctx.ellipse(0, 0, p.size / 2, p.size / 3, 0, 0, Math.PI * 2);
-          ctx.fill();
-        }
-
-        ctx.restore();
-      }
-    });
-
-    if (anyVisible && elapsed < DURATION) {
-      frameId = requestAnimationFrame(tick);
-    } else {
-      cancelAnimationFrame(frameId);
-      canvas.remove();
-    }
+function mediumMove(board) {
+  for (let i = 0; i < 9; i++) {
+    if (board[i]) continue;
+    board[i] = AI_PLAYER;
+    if (checkWin(board)) { board[i] = null; return i; }
+    board[i] = null;
   }
-
-  frameId = requestAnimationFrame(tick);
+  for (let i = 0; i < 9; i++) {
+    if (board[i]) continue;
+    board[i] = HUMAN_PLAYER;
+    if (checkWin(board)) { board[i] = null; return i; }
+    board[i] = null;
+  }
+  if (!board[4]) return 4;
+  return randomMove(board);
 }
-
-// ─── AI — Minimax Algorithm ──────────────────────────────────────────────────
 
 function scoreBoard(board, depth) {
-  const result = checkWinner(board);
-  if (result) return result.player === AI_PLAYER ? 10 - depth : depth - 10;
+  const r = checkWin(board);
+  if (r) return r.player === AI_PLAYER ? 10 - depth : depth - 10;
   return 0;
 }
 
-function minimax(board, depth, isMaximising) {
-  const score = scoreBoard(board, depth);
-  if (score !== 0) return score;
-  if (isBoardFull(board)) return 0;
-
-  if (isMaximising) {
+function minimax(board, depth, isMax) {
+  const s = scoreBoard(board, depth);
+  if (s) return s;
+  if (board.every(Boolean)) return 0;
+  if (isMax) {
     let best = -Infinity;
     for (let i = 0; i < 9; i++) {
-      if (board[i] !== null) continue;
+      if (board[i]) continue;
       board[i] = AI_PLAYER;
       best = Math.max(best, minimax(board, depth + 1, false));
       board[i] = null;
     }
     return best;
   } else {
-    let best = +Infinity;
+    let best = Infinity;
     for (let i = 0; i < 9; i++) {
-      if (board[i] !== null) continue;
+      if (board[i]) continue;
       board[i] = HUMAN_PLAYER;
       best = Math.min(best, minimax(board, depth + 1, true));
       board[i] = null;
@@ -314,187 +255,271 @@ function minimax(board, depth, isMaximising) {
   }
 }
 
-function getBestMove(board) {
-  let bestScore = -Infinity;
-  let bestMove  = -1;
-
+function bestMove(board) {
+  let best = -Infinity, move = -1;
   for (let i = 0; i < 9; i++) {
-    if (board[i] !== null) continue;
+    if (board[i]) continue;
     board[i] = AI_PLAYER;
-    const score = minimax(board, 0, false);
+    const s = minimax(board, 0, false);
     board[i] = null;
-    if (score > bestScore) { bestScore = score; bestMove = i; }
+    if (s > best) { best = s; move = i; }
   }
-
-  return bestMove;
+  return move;
 }
 
-function scheduleAiMove() {
+function scheduleAi() {
   state.isAiThinking = true;
-
   dom.statusMsg.textContent = 'AI is thinking...';
-  dom.statusMsg.classList.remove(
-    'status-message--x', 'status-message--o',
-    'status-message--winner', 'status-message--draw'
-  );
-  dom.statusMsg.classList.add('status-message--o');
-
+  dom.statusMsg.className = 'status-message status-message--o';
   setTimeout(() => {
     state.isAiThinking = false;
-    handleMove(getBestMove([...state.board]));
-  }, AI_THINK_DELAY_MS);
+    handleMove(getAiMove([...state.board]));
+  }, AI_DELAY);
 }
 
-// ─── Game Logic ──────────────────────────────────────────────────────────────
+// ── Modal ────────────────────────────────────────────────────────────────────
 
-function checkWinner(board) {
-  for (const [a, b, c] of WIN_COMBINATIONS) {
-    if (board[a] && board[a] === board[b] && board[a] === board[c]) {
+function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+
+function nextDiff() {
+  const order = ['easy','medium','impossible'];
+  const i = order.indexOf(state.difficulty);
+  return i >= 0 && i < 2 ? order[i + 1] : null;
+}
+
+function showModal(outcome) {
+  const m = MSG[outcome];
+  dom.modalActions.innerHTML = '';
+
+  if (outcome === 'friend_win') {
+    dom.modalIcon.textContent  = '🎉';
+    dom.modalTitle.textContent = `Player ${state.winner} wins!`;
+    dom.modalSub.textContent   = 'Well played.';
+  } else {
+    dom.modalIcon.textContent  = m.icon;
+    dom.modalTitle.textContent = pick(m.titles);
+    dom.modalSub.textContent   = pick(m.subs);
+  }
+
+  const btns = [];
+  const nd = nextDiff();
+
+  if (outcome === 'win' && nd) {
+    btns.push({ label: `Try ${cap(nd)}`, cls: 'primary', fn: () => upgradeAndRestart(nd) });
+    btns.push({ label: 'Play Again', cls: 'secondary', fn: () => hideModal(() => restartGame()) });
+  } else if (outcome === 'lose') {
+    btns.push({ label: 'Try Again', cls: 'primary', fn: () => hideModal(() => restartGame()) });
+  } else if (outcome === 'draw') {
+    btns.push({ label: 'Rematch', cls: 'primary', fn: () => hideModal(() => restartGame()) });
+  } else {
+    btns.push({ label: 'Play Again', cls: 'primary', fn: () => hideModal(() => restartGame()) });
+  }
+
+  btns.push({ label: 'Menu', cls: 'ghost', fn: () => hideModal(() => { state.scores = { X: 0, O: 0 }; showModeScreen(); }) });
+
+  btns.forEach(({ label, cls, fn }) => {
+    const btn = document.createElement('button');
+    btn.className = `modal-btn modal-btn--${cls}`;
+    btn.textContent = label;
+    btn.addEventListener('click', fn);
+    dom.modalActions.appendChild(btn);
+  });
+
+  dom.modal.classList.remove('is-hidden');
+}
+
+function hideModal(cb) {
+  dom.modalCard.classList.add('modal-out');
+  dom.modal.classList.add('modal-out');
+  setTimeout(() => {
+    dom.modal.classList.add('is-hidden');
+    dom.modal.classList.remove('modal-out');
+    dom.modalCard.classList.remove('modal-out');
+    cb?.();
+  }, 220);
+}
+
+function upgradeAndRestart(diff) {
+  state.difficulty = diff;
+  state.scores = { X: 0, O: 0 };
+  dom.gameBadge.textContent = `vs AI · ${cap(diff)}`;
+  hideModal(() => restartGame());
+}
+
+// ── Game logic ───────────────────────────────────────────────────────────────
+
+function checkWin(board) {
+  for (const [a, b, c] of WINS) {
+    if (board[a] && board[a] === board[b] && board[a] === board[c])
       return { player: board[a], cells: [a, b, c] };
-    }
   }
   return null;
-}
-
-function isBoardFull(board) {
-  return board.every((cell) => cell !== null);
 }
 
 function handleMove(index) {
   if (state.board[index] !== null || state.isGameOver) return;
 
   state.board[index] = state.currentPlayer;
-
-  const result = checkWinner(state.board);
+  const result = checkWin(state.board);
 
   if (result) {
-    state.winner      = result.player;
+    state.winner = result.player;
     state.winningCells = result.cells;
-    state.isGameOver  = true;
+    state.isGameOver = true;
     state.scores[result.player] += 1;
-    state.justWon     = true;
-  } else if (isBoardFull(state.board)) {
-    state.isDraw     = true;
+  } else if (state.board.every(Boolean)) {
+    state.isDraw = true;
     state.isGameOver = true;
   } else {
-    state.currentPlayer =
-      state.currentPlayer === PLAYERS.X ? PLAYERS.O : PLAYERS.X;
-
+    state.currentPlayer = state.currentPlayer === PLAYERS.X ? PLAYERS.O : PLAYERS.X;
     if (state.mode === MODES.AI && state.currentPlayer === AI_PLAYER) {
       render(index);
-      scheduleAiMove();
+      scheduleAi();
       return;
     }
   }
 
   render(index);
-}
 
-function restartGame() {
-  state.board         = Array(9).fill(null);
-  state.currentPlayer = PLAYERS.X;
-  state.winner        = null;
-  state.winningCells  = [];
-  state.isDraw        = false;
-  state.isGameOver    = false;
-  state.isAiThinking  = false;
-  state.justWon       = false;
-
-  render(null);
-}
-
-function resetScores() {
-  state.scores = { X: 0, O: 0 };
-  restartGame();
-}
-
-// ─── Rendering ───────────────────────────────────────────────────────────────
-
-function render(lastPlayedIndex) {
-  renderBoard(lastPlayedIndex);
-  renderStatus();
-  renderScores();
-
-  // Trigger confetti after a short pause so the winning-cell highlight
-  // has time to render before the canvas appears on top
-  if (state.justWon) {
-    state.justWon = false;
-    setTimeout(launchConfetti, CONFETTI_DELAY_MS);
+  if (state.isGameOver) {
+    if (state.winner) launchConfetti(state.winner);
+    setTimeout(() => {
+      if (state.mode === MODES.AI) {
+        if (state.winner === HUMAN_PLAYER) showModal('win');
+        else if (state.winner === AI_PLAYER) showModal('lose');
+        else showModal('draw');
+      } else {
+        showModal(state.isDraw ? 'draw' : 'friend_win');
+      }
+    }, state.winner ? 900 : 700);
   }
 }
 
-/**
- * Sync board cells to state.
- *
- * SVG marks are injected once per cell — we check for an existing .mark
- * before injecting to avoid re-triggering the draw animation on every render.
- * On restart (empty cell), innerHTML is cleared to remove old SVGs.
- */
-function renderBoard(lastPlayedIndex) {
-  dom.cells.forEach((cell, index) => {
-    const value = state.board[index];
+function restartGame() {
+  state.board = Array(9).fill(null);
+  state.currentPlayer = PLAYERS.X;
+  state.winner = null; state.winningCells = [];
+  state.isDraw = false; state.isGameOver = false; state.isAiThinking = false;
+  render(null);
+}
 
-    cell.classList.remove('cell--x', 'cell--o', 'cell--taken', 'cell--winner', 'cell--placed');
-    cell.setAttribute('aria-label', `Cell ${index + 1}${value ? ', ' + value : ''}`);
+function resetScores() { state.scores = { X: 0, O: 0 }; restartGame(); }
 
-    if (value === PLAYERS.X) {
-      cell.classList.add('cell--x', 'cell--taken');
-      // Only inject SVG once — prevents re-animation on subsequent renders
-      if (!cell.querySelector('.mark')) cell.appendChild(createXMark());
-    } else if (value === PLAYERS.O) {
-      cell.classList.add('cell--o', 'cell--taken');
-      if (!cell.querySelector('.mark')) cell.appendChild(createOMark());
-    } else {
-      // Empty cell — remove any leftover SVG (happens on restart)
-      cell.innerHTML = '';
+// ── SVG marks ────────────────────────────────────────────────────────────────
+
+function createMark(player) {
+  const NS  = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(NS, 'svg');
+  svg.setAttribute('viewBox', '0 0 100 100');
+  svg.setAttribute('aria-hidden', 'true');
+  svg.classList.add('mark', `mark--${player.toLowerCase()}`);
+
+  if (player === PLAYERS.X) {
+    [[20,20,80,80],[80,20,20,80]].forEach(([x1,y1,x2,y2], idx) => {
+      const l = document.createElementNS(NS, 'line');
+      l.setAttribute('x1', x1); l.setAttribute('y1', y1);
+      l.setAttribute('x2', x2); l.setAttribute('y2', y2);
+      l.classList.add('mark__stroke', idx === 0 ? 'mark__stroke--1' : 'mark__stroke--2');
+      svg.appendChild(l);
+    });
+  } else {
+    const c = document.createElementNS(NS, 'circle');
+    c.setAttribute('cx','50'); c.setAttribute('cy','50'); c.setAttribute('r','30');
+    c.classList.add('mark__stroke');
+    svg.appendChild(c);
+  }
+  return svg;
+}
+
+// ── Confetti ─────────────────────────────────────────────────────────────────
+
+function launchConfetti(winner) {
+  const canvas = document.createElement('canvas');
+  canvas.className = 'confetti-canvas';
+  canvas.width = window.innerWidth; canvas.height = window.innerHeight;
+  document.body.appendChild(canvas);
+  const ctx = canvas.getContext('2d');
+
+  const pal = { X: ['#ff6b6b','#ff8e8e','#e8ff47','#fff'], O: ['#6bc8ff','#4ab5f5','#e8ff47','#fff'] };
+  const cols = pal[winner] ?? [...pal.X,...pal.O];
+  const ox = canvas.width / 2, oy = canvas.height * 0.42;
+
+  const pts = Array.from({ length: 120 }, () => ({
+    x: ox + (Math.random()-.5)*80, y: oy,
+    vx: (Math.random()-.5)*16, vy: -(Math.random()*14+4),
+    rot: Math.random()*360, rv: (Math.random()-.5)*14,
+    col: cols[Math.floor(Math.random()*cols.length)],
+    w: Math.random()*11+5, h: Math.random()*5+3,
+    dot: Math.random() > 0.4, op: 1,
+  }));
+
+  const DUR = 2600; let t0 = null;
+
+  (function frame(ts) {
+    if (!t0) t0 = ts;
+    const prog = Math.min((ts - t0) / DUR, 1);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    for (const p of pts) {
+      p.vy += 0.42; p.vx *= 0.992;
+      p.x += p.vx; p.y += p.vy; p.rot += p.rv;
+      p.op = prog < 0.6 ? 1 : 1 - ((prog - 0.6) / 0.4);
+      if (p.y > canvas.height + 20) continue;
+      ctx.save();
+      ctx.globalAlpha = Math.max(0, p.op);
+      ctx.translate(p.x, p.y); ctx.rotate(p.rot * Math.PI / 180);
+      ctx.fillStyle = p.col;
+      if (p.dot) { ctx.beginPath(); ctx.arc(0, 0, p.w/2, 0, Math.PI*2); ctx.fill(); }
+      else ctx.fillRect(-p.w/2, -p.h/2, p.w, p.h);
+      ctx.restore();
     }
+    prog < 1 ? requestAnimationFrame(frame) : canvas.remove();
+  })();
+}
 
-    if (index === lastPlayedIndex) cell.classList.add('cell--placed');
-    if (state.winningCells.includes(index)) cell.classList.add('cell--winner');
+// ── Rendering ────────────────────────────────────────────────────────────────
+
+function render(last) { renderBoard(last); renderStatus(); renderScores(); }
+
+function renderBoard(last) {
+  dom.cells.forEach((cell, i) => {
+    const v = state.board[i];
+    cell.classList.remove('cell--winner', 'cell--placed');
+    if (!v) {
+      cell.classList.remove('cell--x', 'cell--o', 'cell--taken');
+      cell.querySelector('.mark')?.remove();
+    } else if (!cell.querySelector('.mark')) {
+      cell.classList.add(v === PLAYERS.X ? 'cell--x' : 'cell--o', 'cell--taken');
+      cell.appendChild(createMark(v));
+      cell.setAttribute('aria-label', `Cell ${i + 1}, ${v}`);
+    }
+    if (i === last) cell.classList.add('cell--placed');
+    if (state.winningCells.includes(i)) cell.classList.add('cell--winner');
   });
-
   dom.board.classList.toggle('board--inactive', state.isGameOver || state.isAiThinking);
 }
 
 function renderStatus() {
-  const msg      = dom.statusMsg;
-  const isAiMode = state.mode === MODES.AI;
-
-  msg.classList.remove(
-    'status-message--winner', 'status-message--draw',
-    'status-message--x', 'status-message--o'
-  );
-
+  const msg = dom.statusMsg;
+  const ai  = state.mode === MODES.AI;
+  msg.className = 'status-message';
   if (state.winner) {
-    msg.textContent =
-      isAiMode && state.winner === AI_PLAYER    ? 'AI wins!' :
-      isAiMode && state.winner === HUMAN_PLAYER ? 'You win!' :
-      `Player ${state.winner} wins!`;
+    msg.textContent = ai && state.winner === AI_PLAYER ? 'AI wins!' : ai ? 'You win!' : `Player ${state.winner} wins!`;
     msg.classList.add('status-message--winner');
   } else if (state.isDraw) {
-    msg.textContent = "It's a draw — well played.";
+    msg.textContent = "It's a draw.";
     msg.classList.add('status-message--draw');
   } else {
-    msg.textContent =
-      isAiMode && state.currentPlayer === AI_PLAYER    ? "AI's turn" :
-      isAiMode && state.currentPlayer === HUMAN_PLAYER ? 'Your turn' :
-      `Player ${state.currentPlayer}'s turn`;
-    msg.classList.add(
-      state.currentPlayer === PLAYERS.X ? 'status-message--x' : 'status-message--o'
-    );
+    msg.textContent = ai && state.currentPlayer === AI_PLAYER ? "AI's turn" : ai ? 'Your turn' : `Player ${state.currentPlayer}'s turn`;
+    msg.classList.add(state.currentPlayer === PLAYERS.X ? 'status-message--x' : 'status-message--o');
   }
 }
 
-function renderScores() {
-  updateScoreElement(dom.scoreX, state.scores.X);
-  updateScoreElement(dom.scoreO, state.scores.O);
-}
+function renderScores() { updateScore(dom.scoreX, state.scores.X); updateScore(dom.scoreO, state.scores.O); }
 
-function updateScoreElement(el, newScore) {
-  const current = parseInt(el.textContent, 10);
-  el.textContent = newScore;
-
-  if (newScore > current) {
+function updateScore(el, n) {
+  const cur = parseInt(el.textContent, 10);
+  el.textContent = n;
+  if (n > cur) {
     el.classList.remove('bump');
     void el.offsetWidth;
     el.classList.add('bump');
@@ -502,37 +527,32 @@ function updateScoreElement(el, newScore) {
   }
 }
 
-// ─── Event Listeners ─────────────────────────────────────────────────────────
+// ── Events ───────────────────────────────────────────────────────────────────
 
 dom.modeFriendBtn.addEventListener('click', () => selectMode(MODES.FRIEND));
 dom.modeAiBtn.addEventListener('click',     () => selectMode(MODES.AI));
-dom.changeModeBtn.addEventListener('click', showModeScreen);
+dom.backBtn.addEventListener('click',       () => showStep(dom.stepModes, dom.stepDiff, 'step-enter-bk'));
 
-dom.board.addEventListener('click', (event) => {
+document.querySelectorAll('[data-diff]').forEach(btn =>
+  btn.addEventListener('click', () => selectDifficulty(btn.dataset.diff))
+);
+
+dom.board.addEventListener('click', e => {
   if (state.isAiThinking) return;
-
-  const cell = event.target.closest('.cell');
+  const cell = e.target.closest('.cell');
   if (!cell) return;
-
   if (state.mode === MODES.AI && state.currentPlayer !== HUMAN_PLAYER) return;
-
   handleMove(parseInt(cell.dataset.index, 10));
 });
 
 dom.restartBtn.addEventListener('click',    restartGame);
 dom.resetScoreBtn.addEventListener('click', resetScores);
+dom.changeModeBtn.addEventListener('click', showModeScreen);
+dom.themeBtns.forEach(b => b.addEventListener('click', () => applyTheme(b.dataset.theme)));
 
-// Theme buttons — event delegation on document so it catches both
-// sets of buttons (mode screen header + game screen header)
-document.addEventListener('click', (event) => {
-  const btn = event.target.closest('.theme-btn');
-  if (!btn) return;
-  applyTheme(btn.dataset.theme);
-});
+// ── Init ─────────────────────────────────────────────────────────────────────
 
-// ─── Initialise ──────────────────────────────────────────────────────────────
-
-// Load the saved theme preference, or default to dark
-applyTheme(localStorage.getItem(THEME_STORAGE_KEY) ?? 'dark');
-
-showModeScreen();
+initParticles();
+loadTheme();
+dom.modeScreen.classList.add('screen-enter');
+setTimeout(() => dom.modeScreen.classList.remove('screen-enter'), 400);
