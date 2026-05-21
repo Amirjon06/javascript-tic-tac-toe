@@ -1,75 +1,68 @@
-/**
- * Tic Tac Toe — script.js
- *
- * Architecture note (for your portfolio README):
- *   State lives in ONE plain object. The DOM is always derived from state —
- *   never the other way around. This pattern (sometimes called "unidirectional
- *   data flow") is the same idea behind React, Vue, and Redux. Learning it in
- *   vanilla JS first gives you a huge advantage.
- *
- *   The AI uses the minimax algorithm — a classic recursive decision-tree
- *   approach that evaluates every possible future game state and picks the
- *   move with the best guaranteed outcome. On a 3×3 board it's fast enough
- *   to run instantly, making it a great portfolio talking point.
- *
- *   Visual effects:
- *   - X and O are drawn as animated SVG paths (stroke-dashoffset technique)
- *   - Wins trigger a canvas confetti particle system
- *   - Three themes (dark / neon / light) are applied via a data-theme attribute
- *     on <html>, persisted to localStorage
- */
-
 'use strict';
 
-// ─── Constants ──────────────────────────────────────────────────────────────
+// ─── Constants ─────────────────────────────────────────
 
 const PLAYERS = Object.freeze({ X: 'X', O: 'O' });
-const MODES   = Object.freeze({ FRIEND: 'friend', AI: 'ai' });
+const MODES = Object.freeze({ FRIEND: 'friend', AI: 'ai' });
 
-const AI_PLAYER    = PLAYERS.O;
+const AI_PLAYER = PLAYERS.O;
 const HUMAN_PLAYER = PLAYERS.X;
 
-const AI_THINK_DELAY_MS  = 420;
-const CONFETTI_DELAY_MS  = 280; // slight pause so winning highlight renders first
-const THEME_STORAGE_KEY  = 'ttt-theme';
+const AI_THINK_DELAY_MS = 420;
+const CONFETTI_DELAY_MS = 280;
+const THEME_STORAGE_KEY = 'ttt-theme';
 
 const WIN_COMBINATIONS = Object.freeze([
-  [0, 1, 2], [3, 4, 5], [6, 7, 8], // rows
-  [0, 3, 6], [1, 4, 7], [2, 5, 8], // columns
-  [0, 4, 8], [2, 4, 6],             // diagonals
+  [0, 1, 2],
+  [3, 4, 5],
+  [6, 7, 8],
+
+  [0, 3, 6],
+  [1, 4, 7],
+  [2, 5, 8],
+
+  [0, 4, 8],
+  [2, 4, 6],
 ]);
 
-// ─── State ──────────────────────────────────────────────────────────────────
+// ─── State ─────────────────────────────────────────────
 
 let state = {
-  mode:          null,
-  board:         Array(9).fill(null),
+  mode: null,
+  board: Array(9).fill(null),
   currentPlayer: PLAYERS.X,
-  scores:        { X: 0, O: 0 },
-  winner:        null,
-  winningCells:  [],
-  isDraw:        false,
-  isGameOver:    false,
-  isAiThinking:  false,
-  justWon:       false, // flag checked by render() to trigger confetti
+  scores: { X: 0, O: 0 },
+  winner: null,
+  winningCells: [],
+  isDraw: false,
+  isGameOver: false,
+  isAiThinking: false,
+  justWon: false,
 };
 
-// ─── DOM References ──────────────────────────────────────────────────────────
+// ─── DOM References ───────────────────────────────────
 
 const dom = {
-  modeScreen:    document.getElementById('mode-screen'),
-  gameScreen:    document.getElementById('game-screen'),
+  modeScreen: document.getElementById('mode-screen'),
+  gameScreen: document.getElementById('game-screen'),
+
   modeFriendBtn: document.getElementById('mode-friend'),
-  modeAiBtn:     document.getElementById('mode-ai'),
-  modeLabel:     document.getElementById('mode-label'),
-  board:         document.getElementById('board'),
-  cells:         document.querySelectorAll('.cell'),
-  statusMsg:     document.getElementById('status-message'),
-  scoreX:        document.getElementById('score-x'),
-  scoreO:        document.getElementById('score-o'),
-  labelX:        document.getElementById('label-x'),
-  labelO:        document.getElementById('label-o'),
-  restartBtn:    document.getElementById('restart-btn'),
+  modeAiBtn: document.getElementById('mode-ai'),
+
+  modeLabel: document.getElementById('mode-label'),
+
+  board: document.getElementById('board'),
+  cells: document.querySelectorAll('.cell'),
+
+  statusMsg: document.getElementById('status-message'),
+
+  scoreX: document.getElementById('score-x'),
+  scoreO: document.getElementById('score-o'),
+
+  labelX: document.getElementById('label-x'),
+  labelO: document.getElementById('label-o'),
+
+  restartBtn: document.getElementById('restart-btn'),
   resetScoreBtn: document.getElementById('reset-scores-btn'),
   changeModeBtn: document.getElementById('change-mode-btn'),
 };
